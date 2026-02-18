@@ -2178,8 +2178,8 @@ export default function NossasSolucoes() {
         .section-header h2,
         .section-header .section-header-solucao-title {
           font-family: 'Quicksand', sans-serif;
-          font-size: 3.36rem;
-          font-weight: 700;
+          font-size: 2.8rem;
+          font-weight: 800;
           color: #ffffff;
           margin-bottom: 10px;
           margin-top: 0;
@@ -2382,7 +2382,7 @@ export default function NossasSolucoes() {
           }
 
           .section-header h2 {
-            font-size: 2.64rem;
+            font-size: 1.6rem;
           }
 
           .section-subtitle {
@@ -2440,7 +2440,7 @@ export default function NossasSolucoes() {
           }
 
           .section-header h2 {
-            font-size: 2.16rem;
+            font-size: 1.36rem;
           }
 
           .section-subtitle {

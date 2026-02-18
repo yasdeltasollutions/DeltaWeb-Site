@@ -1902,7 +1902,7 @@ export default function FerramentariaGaleria() {
 
         @media (max-width: 1024px) {
           .section-header h2 {
-            font-size: 2.24rem;
+            font-size: 2.8rem;
           }
           
           .slide-card {

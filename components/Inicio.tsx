@@ -1068,12 +1068,18 @@ export default function Inicio() {
             z-index: 10;
           }
 
-          /* Garante que ícone e texto participem do layout inline */
+          /* Alinhamento vertical: ícone e texto centralizados */
           .btn-action i,
           .btn-action span {
             position: relative;
             z-index: 10;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            line-height: 1;
+          }
+          .btn-action i {
+            justify-content: center;
+            font-size: 1.15em;
           }
 
           .btn-action:hover {
