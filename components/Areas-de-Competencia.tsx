@@ -23,6 +23,9 @@ export default function Servicos() {
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [notificationCardDismissed, setNotificationCardDismissed] = useState(false);
   const [notificationEverSeen, setNotificationEverSeen] = useState(false);
+  const [modalSlideDirection, setModalSlideDirection] = useState<'next' | 'prev' | null>(null);
+  const modalSwipeStartX = useRef<number>(0);
+  const modalSwipeStartY = useRef<number>(0);
 
   // Ler do localStorage se o usuário já viu a notificação completa (para mostrar só o botão WhatsApp depois)
   useEffect(() => {
@@ -588,6 +591,41 @@ export default function Servicos() {
     ? especialidadesTecnicas.find(e => e.id === expandedCardId)
     : null;
 
+  // Navegação entre modais com direção para animação tipo carrossel
+  const goToPrevModal = () => {
+    setModalSlideDirection('prev');
+    setExpandedCardId(expandedCardId === 1 ? 14 : (expandedCardId ?? 1) - 1);
+  };
+  const goToNextModal = () => {
+    setModalSlideDirection('next');
+    setExpandedCardId(expandedCardId === 14 ? 1 : (expandedCardId ?? 1) + 1);
+  };
+
+  // Swipe no modal (mobile): deslizar esquerda = próximo, direita = anterior
+  const MIN_SWIPE_DIST = 50;
+  const handleModalTouchStart = (e: React.TouchEvent) => {
+    modalSwipeStartX.current = e.touches[0].clientX;
+    modalSwipeStartY.current = e.touches[0].clientY;
+  };
+  const handleModalTouchEnd = (e: React.TouchEvent) => {
+    if (!e.changedTouches[0]) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const deltaX = endX - modalSwipeStartX.current;
+    const deltaY = endY - modalSwipeStartY.current;
+    if (Math.abs(deltaX) < MIN_SWIPE_DIST) return;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+    if (deltaX < 0) goToNextModal();
+    else goToPrevModal();
+  };
+
+  // Resetar direção da animação após a transição 3D
+  useEffect(() => {
+    if (modalSlideDirection === null) return;
+    const t = setTimeout(() => setModalSlideDirection(null), 600);
+    return () => clearTimeout(t);
+  }, [modalSlideDirection, expandedCardId]);
+
   // Efeito para fechar modal com ESC e bloquear scroll
   useEffect(() => {
     if (expandedCardId === null) {
@@ -1063,37 +1101,25 @@ export default function Servicos() {
                   aria-modal="true"
                   aria-label="Detalhes da área de competência"
                 >
-                  {/* Modal centralizado + setas para navegar entre cards */}
+                  {/* Modal centralizado + setas para navegar entre cards (no mobile setas ficam abaixo do modal) */}
                   <div className="modal-center-container modal-nav-wrapper" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="modal-nav-arrow modal-nav-prev"
-                      onClick={() => setExpandedCardId(expandedCardId === 1 ? 14 : (expandedCardId ?? 1) - 1)}
-                      aria-label="Card anterior"
+                    <div
+                      key={expandedCardId}
+                      className={`modal-slide-wrapper${modalSlideDirection ? ` modal-slide-${modalSlideDirection}` : ''}`}
                     >
-                      <svg viewBox="0 0 24 24">
-                        <path d="M15 6L9 12L15 18" stroke="currentColor" strokeWidth="2" fill="none"/>
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="modal-nav-arrow modal-nav-next"
-                      onClick={() => setExpandedCardId(expandedCardId === 14 ? 1 : (expandedCardId ?? 1) + 1)}
-                      aria-label="Próximo card"
-                    >
-                      <svg viewBox="0 0 24 24">
-                        <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" fill="none"/>
-                      </svg>
-                    </button>
                     <div 
                       className="especialidade-modal-box unified-especialidade-card expanded"
                       style={{ 
                         '--card-color': expandedEspecialidade.color,
                         '--card-color-rgb': hexToRgb(expandedEspecialidade.color)
                       } as React.CSSProperties}
+                      onTouchStart={handleModalTouchStart}
+                      onTouchEnd={handleModalTouchEnd}
                     >
+                      <div className="modal-content-inner">
                       <div className="expanded-card-content">
                         <button 
+                          type="button"
                           className="close-expanded-card"
                           onClick={(e) => { e.stopPropagation(); closeModalCard(); }}
                           aria-label="Fechar"
@@ -1150,7 +1176,31 @@ export default function Servicos() {
                           </div>
                         </div>
                       </div>
+                      </div>
                       <div className="unified-card-border" style={{ backgroundColor: expandedEspecialidade.color }}></div>
+                    </div>
+                    </div>
+                    <div className="modal-nav-arrows-row">
+                      <button
+                        type="button"
+                        className="modal-nav-arrow modal-nav-prev"
+                        onClick={goToPrevModal}
+                        aria-label="Card anterior"
+                      >
+                        <svg viewBox="0 0 24 24">
+                          <path d="M15 6L9 12L15 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="modal-nav-arrow modal-nav-next"
+                        onClick={goToNextModal}
+                        aria-label="Próximo card"
+                      >
+                        <svg viewBox="0 0 24 24">
+                          <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                      </button>
                     </div>
                   </div>
 
@@ -3244,6 +3294,11 @@ export default function Servicos() {
         .especialidade-modal-portal-root .modal-center-container.modal-nav-wrapper {
           position: relative;
           overflow: visible;
+          perspective: 1600px;
+          perspective-origin: 50% 50%;
+        }
+        .especialidade-modal-portal-root .modal-nav-arrows-row {
+          display: contents;
         }
         .especialidade-modal-portal-root .modal-nav-arrow {
           position: absolute;
@@ -3276,6 +3331,40 @@ export default function Servicos() {
         .especialidade-modal-portal-root .modal-nav-next {
           right: -66px;
         }
+        .especialidade-modal-portal-root .modal-slide-wrapper {
+          width: 100%;
+          transform-style: preserve-3d;
+          backface-visibility: hidden;
+        }
+        .especialidade-modal-portal-root .modal-slide-wrapper.modal-slide-next {
+          animation: modalCard3DFromRight 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+        }
+        .especialidade-modal-portal-root .modal-slide-wrapper.modal-slide-prev {
+          animation: modalCard3DFromLeft 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+        }
+        @keyframes modalCard3DFromRight {
+          from {
+            opacity: 0;
+            transform: rotateY(72deg) translateZ(-180px) translateX(40px);
+          }
+          to {
+            opacity: 1;
+            transform: rotateY(0deg) translateZ(0) translateX(0);
+          }
+        }
+        @keyframes modalCard3DFromLeft {
+          from {
+            opacity: 0;
+            transform: rotateY(-72deg) translateZ(-180px) translateX(-40px);
+          }
+          to {
+            opacity: 1;
+            transform: rotateY(0deg) translateZ(0) translateX(0);
+          }
+        }
+        .especialidade-modal-portal-root .especialidade-modal-box .modal-content-inner {
+          min-height: 100%;
+        }
         .especialidade-modal-portal-root .especialidade-modal-box {
           width: 100%;
           max-width: 100%;
@@ -3296,6 +3385,7 @@ export default function Servicos() {
           z-index: 1;
           box-sizing: border-box;
           -webkit-overflow-scrolling: touch;
+          transform-style: preserve-3d;
         }
         @keyframes especialidade-modalBoxIn {
           to { 
@@ -3604,7 +3694,8 @@ export default function Servicos() {
           color: #FFFFFF;
           cursor: pointer;
           transition: all 0.3s ease;
-          z-index: 10;
+          z-index: 10003;
+          pointer-events: auto;
         }
         .especialidade-modal-portal-root .close-expanded-card:hover {
           background: rgba(255, 255, 255, 0.2);
@@ -3768,20 +3859,39 @@ export default function Servicos() {
           .especialidade-modal-portal-root .modal-center-container {
             padding: min(16px, 2vh);
             max-width: 95%;
+            flex-direction: column;
+            align-items: center;
           }
-          .especialidade-modal-portal-root .modal-nav-prev {
-            left: 8px;
+          .especialidade-modal-portal-root .modal-nav-arrows-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 14px;
+            order: 2;
           }
+          .especialidade-modal-portal-root .especialidade-modal-box {
+            order: 1;
+          }
+          .especialidade-modal-portal-root .modal-nav-prev,
           .especialidade-modal-portal-root .modal-nav-next {
-            right: 8px;
+            position: relative;
+            left: auto;
+            right: auto;
+            top: auto;
+            transform: none;
+          }
+          .especialidade-modal-portal-root .modal-nav-arrow:hover {
+            transform: scale(1.1);
           }
           .especialidade-modal-portal-root .modal-nav-arrow {
-            width: 46px;
-            height: 46px;
+            width: 48px;
+            height: 48px;
           }
           .especialidade-modal-portal-root .modal-nav-arrow svg {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
           }
           .especialidade-modal-portal-root .especialidade-modal-box {
             margin: 0 auto;
@@ -3796,8 +3906,9 @@ export default function Servicos() {
           }
           .especialidade-modal-portal-root .notification-fixed-container.whatsapp-only {
             display: flex !important;
-            bottom: 20px;
-            right: 20px;
+            bottom: 24px;
+            right: 24px;
+            left: auto;
           }
           .especialidade-modal-portal-root .expanded-card-content {
             padding: 15px 20px 30px 20px;
@@ -3891,6 +4002,13 @@ export default function Servicos() {
             right: 12px;
             width: 280px;
           }
+          .especialidade-modal-portal-root .notification-fixed-container.whatsapp-only {
+            top: auto !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            left: auto !important;
+            width: auto !important;
+          }
           .especialidade-modal-portal-root .expanded-card-content {
             padding: 15px 14px 20px 14px;
           }
@@ -3937,6 +4055,12 @@ export default function Servicos() {
         @media (max-width: 480px) {
           .especialidade-modal-portal-root .notification-fixed-container {
             width: 260px;
+          }
+          .especialidade-modal-portal-root .notification-fixed-container.whatsapp-only {
+            top: auto !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            width: auto !important;
           }
           .especialidade-modal-portal-root .modal-center-container {
             padding: 10px;
