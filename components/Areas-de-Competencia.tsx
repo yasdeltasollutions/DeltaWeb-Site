@@ -999,7 +999,6 @@ export default function Servicos() {
                 </div>
               ))}
             </div>
-            <div className="banner-connector-line"></div>
           </div>
           
           {/* CONTEÚDO DAS ESPECIALIDADES ABAIXO DAS IMAGENS */}
@@ -2065,21 +2064,6 @@ export default function Servicos() {
           opacity: 0.6;
         }
 
-        .banner-connector-line {
-          position: absolute;
-          top: 50%;
-          left: 20px;
-          right: 20px;
-          height: 2px;
-          background: linear-gradient(90deg, 
-            rgba(0, 166, 255, 0.2) 0%, 
-            rgba(0, 166, 255, 0.5) 50%, 
-            rgba(0, 166, 255, 0.2) 100%);
-          z-index: 1;
-          margin-top: -1px;
-          filter: blur(1px);
-        }
-
         /* CONTEÚDO DAS ESPECIALIDADES */
         .especialidades-unified-content {
           max-width: 1400px;
@@ -2595,10 +2579,6 @@ export default function Servicos() {
           
           .banner-image-frame {
             height: 300px;
-          }
-          
-          .banner-connector-line {
-            display: none;
           }
           
           .unified-especialidades-grid {

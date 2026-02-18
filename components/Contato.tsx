@@ -16,7 +16,7 @@ export default function Contato() {
                 <FaPhone />
               </div>
               <div className="cta-content">
-                <h4>Consultoria Gratuita</h4>
+                <h4>Nosso WhatsApp</h4>
                 <p>Fale diretamente com nossos especialistas</p>
                 <a 
                   href="https://api.whatsapp.com/send/?phone=5592984810094&text=Ol%C3%A1%21+Vim+do+site+da+Delta+e+gostaria+da+minha+consultoria+gratuita&type=phone_number&app_absent=0" 
@@ -35,17 +35,28 @@ export default function Contato() {
                 <FaEnvelope />
               </div>
               <div className="cta-content">
-                <h4>Email Direto</h4>
+                <h4>Nosso Email</h4>
                 <p>Envie suas dúvidas para nossa equipe técnica</p>
-                <a 
-                  href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@deltasolutions.com.br&su=Contato%20Delta%20Solutions&body=Olá,%20gostaria%20de%20saber%20mais%20sobre%20seus%20serviços."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="cta-button email-button"
-                >
-                  <i className="fas fa-envelope"></i>
-                  <span>Enviar Email</span>
-                </a>
+                <div className="cta-email-buttons">
+                  <a 
+                    href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@deltasolutions.com.br&su=Contato%20Delta%20Solutions&body=Olá,%20gostaria%20de%20saber%20mais%20sobre%20seus%20serviços."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cta-button email-button"
+                  >
+                    <i className="fas fa-envelope"></i>
+                    <span>Gmail</span>
+                  </a>
+                  <a 
+                    href="https://outlook.live.com/mail/0/deeplink/compose?to=contato@deltasolutions.com.br&subject=Contato%20Delta%20Solutions&body=Olá,%20gostaria%20de%20saber%20mais%20sobre%20seus%20serviços."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cta-button email-button"
+                  >
+                    <i className="fas fa-envelope"></i>
+                    <span>Outlook</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -285,6 +296,13 @@ export default function Contato() {
 
         .email-button {
           text-decoration: none !important;
+        }
+
+        .cta-email-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 4px;
         }
 
         .cta-button::before {

@@ -17,11 +17,21 @@ export default function NossasSolucoes() {
   const [isSectionVisible, setIsSectionVisible] = useState<boolean>(true);
   const [isFloatingMenuOpen, setIsFloatingMenuOpen] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Evita hydration mismatch: menu flutuante só renderiza no cliente após montar
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // No mobile: menu só abre por clique (hover desabilitado)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
   }, []);
 
   // Seções disponíveis para o menu (sem o título geral "Nossas Soluções")
@@ -66,6 +76,7 @@ export default function NossasSolucoes() {
       font-family: 'Quicksand', 'Inter', 'Segoe UI', sans-serif;
       width: 800px;
       min-height: 1131px;
+      height: auto;
       background: #ffffff;
       color: #1e293b;
       line-height: 1.5;
@@ -75,40 +86,14 @@ export default function NossasSolucoes() {
       flex-direction: column;
     }
 
-    /* Background com gradiente sutil */
-    .pdf-export-root::before {
-      content: '';
-      position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(16, 219, 255, 0.03) 0%, rgba(16, 219, 255, 0) 70%);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .pdf-export-root::after {
-      content: '';
-      position: absolute;
-      bottom: -50px;
-      left: -50px;
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, rgba(16, 219, 255, 0.02) 0%, rgba(16, 219, 255, 0) 70%);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
     /* Header com design moderno - compacto */
     .pdf-header {
       padding: 12px 30px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(5px);
-      border-bottom: 1px solid rgba(16, 219, 255, 0.1);
+      background: #f8fafc;
+      border-bottom: 1px solid rgba(16, 219, 255, 0.2);
       position: relative;
       z-index: 10;
     }
@@ -119,7 +104,7 @@ export default function NossasSolucoes() {
     }
 
     .pdf-header-badge {
-      background: linear-gradient(135deg, #10dbff, #0c4a6e);
+      background: #0c4a6e;
       color: white;
       padding: 6px 14px;
       border-radius: 30px;
@@ -167,7 +152,7 @@ export default function NossasSolucoes() {
     .pdf-title-rule {
       width: 120px;
       height: 3px;
-      background: linear-gradient(90deg, #10dbff, #0c4a6e);
+      background: #10dbff;
       border-radius: 4px;
     }
 
@@ -242,7 +227,7 @@ export default function NossasSolucoes() {
     .pdf-description strong {
       color: #0c1a2b;
       font-weight: 700;
-      background: linear-gradient(120deg, rgba(16, 219, 255, 0.1), rgba(16, 219, 255, 0.05));
+      background: rgba(16, 219, 255, 0.08);
       padding: 0 2px;
     }
 
@@ -294,7 +279,7 @@ export default function NossasSolucoes() {
     .pdf-features-line {
       flex: 1;
       height: 1px;
-      background: linear-gradient(90deg, #e2e8f0, transparent);
+      background: #e2e8f0;
     }
 
     .pdf-features-grid {
@@ -323,7 +308,7 @@ export default function NossasSolucoes() {
     .pdf-feature-icon {
       width: 26px;
       height: 26px;
-      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      background: #e0f2fe;
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -347,10 +332,10 @@ export default function NossasSolucoes() {
       line-height: 1.3;
     }
 
-    /* CTA moderno com gradiente - compacto */
+    /* CTA moderno - compacto (sem gradiente para evitar createPattern 0x0 no html2canvas) */
     .pdf-cta-modern {
       margin: 12px 0 10px;
-      background: linear-gradient(135deg, #0c1a2b, #132b3f);
+      background: #0c1a2b;
       border-radius: 14px;
       padding: 14px 18px;
       display: flex;
@@ -358,18 +343,6 @@ export default function NossasSolucoes() {
       justify-content: space-between;
       border: 1px solid rgba(16, 219, 255, 0.2);
       position: relative;
-      overflow: hidden;
-    }
-
-    .pdf-cta-modern::before {
-      content: '';
-      position: absolute;
-      top: -30px;
-      right: -30px;
-      width: 150px;
-      height: 150px;
-      background: radial-gradient(circle, rgba(16, 219, 255, 0.1), transparent);
-      border-radius: 50%;
     }
 
     .pdf-cta-content {
@@ -447,7 +420,8 @@ export default function NossasSolucoes() {
 
     .pdf-footer-right {
       display: flex;
-      gap: 15px;
+      align-items: center;
+      gap: 8px;
     }
 
     .pdf-footer-social {
@@ -460,6 +434,12 @@ export default function NossasSolucoes() {
       justify-content: center;
       font-size: 0.7rem;
       color: #475569;
+    }
+
+    .pdf-footer-handle {
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
     }
   `;
 
@@ -499,7 +479,7 @@ export default function NossasSolucoes() {
 
     // Container da imagem
     const imageHtml = fullImgSrc
-      ? `<div class="pdf-image-container"><img src="${fullImgSrc}" alt="${imgAlt.replace(/"/g, '&quot;')}" /></div>`
+      ? `<div class="pdf-image-container"><img src="${fullImgSrc}" alt="${imgAlt.replace(/"/g, '&quot;')}" width="280" height="280" /></div>`
       : '<div class="pdf-image-container" style="background: transparent; display: flex; align-items: center; justify-content: center;"><span style="color: #94a3b8; font-size: 0.8rem;">Imagem ilustrativa</span></div>';
 
     // Data atual
@@ -548,13 +528,11 @@ export default function NossasSolucoes() {
         </div>
         <div class="pdf-footer-modern">
           <div class="pdf-footer-left">
-            <img src="${logoUrl}" alt="Delta" class="pdf-footer-logo-small" />
-            <span class="pdf-footer-info">Delta Sollutions • Inovação digital</span>
+            <span class="pdf-footer-info">Delta Sollutions</span>
           </div>
           <div class="pdf-footer-right">
-            <span class="pdf-footer-social">in</span>
-            <span class="pdf-footer-social">@</span>
-            <span class="pdf-footer-social">f</span>
+            <span class="pdf-footer-social" aria-hidden="true">in</span>
+            <span class="pdf-footer-handle">@deltasollutions</span>
           </div>
         </div>
       </div>
@@ -563,15 +541,15 @@ export default function NossasSolucoes() {
 
     const headerHtml = `
     <div class="pdf-header">
-      <img src="${logoUrl}" alt="Delta Sollutions" />
+      <img src="${logoUrl}" alt="Delta Sollutions" width="120" height="34" />
       <span class="pdf-header-badge">Via Delta Web-Site</span>
     </div>
   `;
 
-    // Criar elemento wrapper
+    // Criar elemento wrapper (fora da tela; o clone será tornado visível no onclone para a captura)
     const wrapper = document.createElement('div');
     wrapper.className = 'pdf-export-root';
-    wrapper.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:800px;background:#fff;');
+    wrapper.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:800px;min-height:1131px;background:#fff;');
     wrapper.innerHTML = `<style>${styles}</style>${headerHtml}${bodyHtml}`;
     document.body.appendChild(wrapper);
 
@@ -595,15 +573,30 @@ export default function NossasSolucoes() {
 
     try {
       await loadImages();
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 500));
 
-      // Gerar canvas com qualidade
+      // Gerar canvas: onclone torna o clone visível para o html2canvas desenhar o conteúdo (evita PDF em branco)
       const canvas = await html2canvas(wrapper, {
         scale: 2,
-        useCORS: true,
+        useCORS: false,
+        allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
         windowWidth: 800,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (_clonedDoc, clonedElement) => {
+          const root = clonedElement as HTMLElement;
+          if (root && root.style) {
+            root.style.visibility = 'visible';
+            root.style.position = 'fixed';
+            root.style.left = '0';
+            root.style.top = '0';
+            root.style.zIndex = '99999';
+            root.style.width = '800px';
+            root.style.minHeight = '1131px';
+          }
+        },
       });
 
       // Criar PDF com múltiplas páginas se necessário (conteúdo ajustado ao tamanho da página)
@@ -650,8 +643,10 @@ export default function NossasSolucoes() {
       pdf.save(`delta-${safeTitle}-moderno.pdf`);
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      window.alert(`Não foi possível gerar o PDF. Tente novamente.\n\nDetalhe: ${msg}`);
     } finally {
-      wrapper.remove();
+      if (wrapper.parentNode) wrapper.remove();
     }
   };
 
@@ -750,9 +745,9 @@ export default function NossasSolucoes() {
         createPortal(
           <div
             ref={menuRef}
-            className={`floating-nav-menu ${isFloatingMenuOpen ? 'expanded' : ''}`}
-            onMouseEnter={() => setIsFloatingMenuOpen(true)}
-            onMouseLeave={() => setIsFloatingMenuOpen(false)}
+            className={`floating-nav-menu ${isFloatingMenuOpen ? 'expanded' : ''} ${isMobile ? 'floating-nav-menu-mobile' : ''}`}
+            onMouseEnter={!isMobile ? () => setIsFloatingMenuOpen(true) : undefined}
+            onMouseLeave={!isMobile ? () => setIsFloatingMenuOpen(false) : undefined}
           >
             {/* Botão principal com efeito 3D e brilho rotativo */}
             <button
@@ -780,7 +775,7 @@ export default function NossasSolucoes() {
               <div className="floating-nav-dropdown">
                 {/* Título com efeito de scanline */}
                 <div className="floating-nav-title-section">
-                  <h3 className="floating-nav-title">Painel de Navegação</h3>
+                  <h3 className="floating-nav-title">MENU DE NAVEGAÇÃO</h3>
                   <div className="floating-nav-scanline"></div>
                 </div>
 
@@ -1643,13 +1638,12 @@ export default function NossasSolucoes() {
           font-family: 'Quicksand', sans-serif;
           font-size: 0.8rem;
           font-weight: 700;
-          color: rgba(16, 219, 255, 0.6);
-          background: rgba(16, 219, 255, 0.1);
-          padding: 4px 8px;
-          border-radius: 8px;
-          border: 1px solid rgba(16, 219, 255, 0.2);
-          min-width: 42px;
-          text-align: center;
+          color: rgba(16, 219, 255, 0.7);
+          background: none;
+          padding: 0;
+          border: none;
+          min-width: 28px;
+          text-align: left;
         }
 
         .floating-nav-card-content {
@@ -1759,12 +1753,32 @@ export default function NossasSolucoes() {
 
         @media (max-width: 768px) {
           .floating-nav-menu {
-            top: 80px;
+            top: auto;
+            bottom: 24px;
             right: 16px;
+            left: auto;
+          }
+
+          /* Mobile: dropdown acima do botão, aberto só por clique */
+          .floating-nav-menu.floating-nav-menu-mobile {
+            flex-direction: column-reverse;
+            align-items: flex-end;
+          }
+
+          .floating-nav-menu.floating-nav-menu-mobile .floating-nav-dropdown-wrapper {
+            margin-top: 0;
+            margin-bottom: 12px;
+            transform: translateY(20px) scale(0.95);
+            transform-origin: bottom right;
+          }
+
+          .floating-nav-menu.floating-nav-menu-mobile.expanded .floating-nav-dropdown-wrapper {
+            transform: translateY(0) scale(1);
           }
 
           .floating-nav-dropdown-wrapper {
-            width: 320px;
+            width: min(320px, calc(100vw - 32px));
+            max-width: 320px;
           }
 
           .floating-nav-trigger {
@@ -1783,8 +1797,14 @@ export default function NossasSolucoes() {
         }
 
         @media (max-width: 480px) {
+          .floating-nav-menu {
+            bottom: 20px;
+            right: 12px;
+          }
+
           .floating-nav-dropdown-wrapper {
-            width: 300px;
+            width: min(300px, calc(100vw - 24px));
+            max-width: 300px;
           }
         }
 
@@ -2379,12 +2399,29 @@ export default function NossasSolucoes() {
             margin-bottom: 20px;
           }
 
+          .features-list {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 8px;
+            max-width: 100%;
+            box-sizing: border-box;
+          }
+
           .feature-item {
-            padding: 10px 15px;
+            padding: 10px 14px;
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: 100%;
+            white-space: normal;
+            box-sizing: border-box;
           }
 
           .feature-item span {
             font-size: 0.95rem;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
           }
 
           .image-wrapper {
@@ -2419,16 +2456,44 @@ export default function NossasSolucoes() {
           }
 
           .features-list {
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
             gap: 10px;
+            padding: 0 4px;
+            max-width: 100%;
+            box-sizing: border-box;
           }
 
           .feature-item {
-            padding: 8px 12px;
+            padding: 10px 12px;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            white-space: normal;
+            box-sizing: border-box;
           }
 
           .feature-item span {
             font-size: 0.9rem;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .features-list {
+            padding: 0 2px;
+            gap: 8px;
+          }
+
+          .feature-item {
+            padding: 8px 10px;
+          }
+
+          .feature-item span {
+            font-size: 0.85rem;
           }
         }
       `}</style>
