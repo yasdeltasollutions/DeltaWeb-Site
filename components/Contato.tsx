@@ -24,7 +24,7 @@ export default function Contato() {
                   rel="noopener noreferrer" 
                   className="cta-button"
                 >
-                  <i className="fas fa-bolt"></i>
+                  <i className="fab fa-whatsapp"></i>
                   <span>Consulte Aqui</span>
                 </a>
               </div>

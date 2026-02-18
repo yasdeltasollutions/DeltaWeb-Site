@@ -22,6 +22,21 @@ export default function Servicos() {
   const activeSlideRef = useRef<HTMLDivElement | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [notificationCardDismissed, setNotificationCardDismissed] = useState(false);
+  const [notificationEverSeen, setNotificationEverSeen] = useState(false);
+
+  // Ler do localStorage se o usuário já viu a notificação completa (para mostrar só o botão WhatsApp depois)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const seen = window.localStorage.getItem('delta_modal_notification_seen') === 'true';
+    setNotificationEverSeen(seen);
+  }, []);
+
+  const markNotificationSeen = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('delta_modal_notification_seen', 'true');
+    }
+    setNotificationEverSeen(true);
+  };
 
   // Converte hex para "r,g,b" (para uso em rgba no CSS)
   const hexToRgb = (hex: string): string => {
@@ -564,6 +579,7 @@ export default function Servicos() {
   const closeNotificationOnly = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    markNotificationSeen();
     setNotificationCardDismissed(true);
   };
 
@@ -806,15 +822,38 @@ export default function Servicos() {
           </p>
         </div>
 
-        {/* Carrossel 3D – swipe horizontal no mobile; scroll vertical liberado quando gesto é vertical */}
-        <div 
-          className="carousel-3d-container-lateral scroll-reveal scroll-reveal-delay-2" 
-          ref={carouselRef}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="carousel-3d-track-lateral">
-            {services.map((service, index) => (
+        {/* Carrossel 3D – setas nas laterais, bolinhas abaixo */}
+        <div className="carousel-with-arrows-wrapper">
+          {/* Setas esquerda e direita */}
+          <button 
+            onClick={prevSlide}
+            className="carousel-arrow-side carousel-arrow-left"
+            disabled={isAnimating}
+            aria-label="Slide anterior"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M15 6L9 12L15 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+            </svg>
+          </button>
+          <button 
+            onClick={nextSlide}
+            className="carousel-arrow-side carousel-arrow-right"
+            disabled={isAnimating}
+            aria-label="Próximo slide"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+            </svg>
+          </button>
+
+          <div 
+            className="carousel-3d-container-lateral scroll-reveal scroll-reveal-delay-2" 
+            ref={carouselRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="carousel-3d-track-lateral">
+              {services.map((service, index) => (
               <div
                 key={service.id}
                 className={`carousel-slide-3d-lateral ${index === currentIndex ? 'active' : ''}`}
@@ -903,35 +942,21 @@ export default function Servicos() {
           
           {/* Linha central visual */}
           <div className="center-line-lateral"></div>
+          </div>
         </div>
 
-        {/* Controles inferiores */}
-        <div className="carousel-controls-lateral">
-          <div className="controls-left">
-            <button 
-              onClick={prevSlide}
-              className="control-btn-lateral prev-control"
-              disabled={isAnimating}
-              aria-label="Slide anterior"
-            >
-              <svg viewBox="0 0 24 24">
-                <path d="M15 6L9 12L15 18" stroke="currentColor" strokeWidth="2" fill="none"/>
-              </svg>
-            </button>
-          </div>
-
-          <div className="controls-right">
-            <button 
-              onClick={nextSlide}
-              className="control-btn-lateral next-control"
-              disabled={isAnimating}
-              aria-label="Próximo slide"
-            >
-              <svg viewBox="0 0 24 24">
-                <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" fill="none"/>
-              </svg>
-            </button>
-          </div>
+        {/* Bolinhas (dots) abaixo do carrossel */}
+        <div className="carousel-dots">
+          {services.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              className={`carousel-dot ${index === currentIndex ? 'active' : ''}`}
+              onClick={() => goToSlide(index)}
+              aria-label={`Ir para slide ${index + 1}`}
+              aria-current={index === currentIndex ? 'true' : undefined}
+            />
+          ))}
         </div>
 
         {/* NOVA SEÇÃO - ESPECIALIDADES COM 3 IMAGENS JUNTAS NO TOPO */}
@@ -1039,8 +1064,28 @@ export default function Servicos() {
                   aria-modal="true"
                   aria-label="Detalhes da área de competência"
                 >
-                  {/* Modal centralizado */}
-                  <div className="modal-center-container" onClick={(e) => e.stopPropagation()}>
+                  {/* Modal centralizado + setas para navegar entre cards */}
+                  <div className="modal-center-container modal-nav-wrapper" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="modal-nav-arrow modal-nav-prev"
+                      onClick={() => setExpandedCardId(expandedCardId === 1 ? 14 : (expandedCardId ?? 1) - 1)}
+                      aria-label="Card anterior"
+                    >
+                      <svg viewBox="0 0 24 24">
+                        <path d="M15 6L9 12L15 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="modal-nav-arrow modal-nav-next"
+                      onClick={() => setExpandedCardId(expandedCardId === 14 ? 1 : (expandedCardId ?? 1) + 1)}
+                      aria-label="Próximo card"
+                    >
+                      <svg viewBox="0 0 24 24">
+                        <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      </svg>
+                    </button>
                     <div 
                       className="especialidade-modal-box unified-especialidade-card expanded"
                       style={{ 
@@ -1110,9 +1155,21 @@ export default function Servicos() {
                     </div>
                   </div>
 
-                  {/* Notificação fixa no canto inferior direito - fecha só a notificação, não o modal */}
-                  {!notificationCardDismissed && (
-                  <div className="notification-fixed-container" onClick={(e) => e.stopPropagation()}>
+                  {/* Notificação: primeira vez = card completo; depois = só botão WhatsApp */}
+                  <div className={`notification-fixed-container${notificationEverSeen ? ' whatsapp-only' : ''}`} onClick={(e) => e.stopPropagation()}>
+                    {notificationEverSeen ? (
+                      <a
+                        href="https://api.whatsapp.com/send/?phone=5592984810094&text=Ol%C3%A1%21+Vim+do+site+da+Delta+e+gostaria+da+minha+consultoria+gratuita&type=phone_number&app_absent=0"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="modal-whatsapp-only-btn"
+                        aria-label="Conversar no WhatsApp"
+                      >
+                        <svg className="whatsapp-icon" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                      </a>
+                    ) : !notificationCardDismissed && (
                     <div className="notification-card">
                       <div className="notification-header-bar"></div>
                       <div className="notification-content">
@@ -1136,6 +1193,7 @@ export default function Servicos() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="notification-button"
+                            onClick={markNotificationSeen}
                           >
                             <span className="button-icon">
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1172,8 +1230,8 @@ export default function Servicos() {
                       </button>
                       <div className="notification-time">agora</div>
                     </div>
+                    )}
                   </div>
-                  )}
                 </div>
               </div>,
               document.body
@@ -1769,49 +1827,84 @@ export default function Servicos() {
           z-index: -1;
         }
 
-        /* Controles inferiores */
-        .carousel-controls-lateral {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 600px;
-          margin-bottom: 40px;
+        /* Wrapper do carrossel com setas nas laterais */
+        .carousel-with-arrows-wrapper {
+          position: relative;
+          width: 100%;
         }
 
-        .controls-left,
-        .controls-right {
-          flex-shrink: 0;
-        }
-
-        .control-btn-lateral {
-          width: auto;
-          height: auto;
-          background: transparent;
+        /* Setas à esquerda e à direita do carrossel (apenas ícone, sem círculo) */
+        .carousel-arrow-side {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 20;
+          width: 56px;
+          height: 56px;
           border: none;
-          border-radius: 0;
+          background: transparent;
+          color: #00a6ff;
+          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #00a6ff;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          padding: 10px;
+          transition: color 0.3s ease, transform 0.3s ease;
         }
 
-        .control-btn-lateral:hover:not(:disabled) {
-          background: transparent;
-          transform: scale(1.2);
+        .carousel-arrow-side:hover:not(:disabled) {
           color: #10dbff;
+          transform: translateY(-50%) scale(1.1);
         }
 
-        .control-btn-lateral:disabled {
+        .carousel-arrow-side:disabled {
           opacity: 0.3;
           cursor: not-allowed;
         }
 
-        .control-btn-lateral svg {
-          width: 40px;
-          height: 40px;
+        .carousel-arrow-side svg {
+          width: 28px;
+          height: 28px;
+        }
+
+        .carousel-arrow-left {
+          left: 2px;
+        }
+
+        .carousel-arrow-right {
+          right: 2px;
+        }
+
+        /* Bolinhas (dots) abaixo do carrossel */
+        .carousel-dots {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          margin-top: 24px;
+          margin-bottom: 40px;
+          flex-wrap: wrap;
+        }
+
+        .carousel-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(0, 166, 255, 0.35);
+          cursor: pointer;
+          padding: 0;
+          transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        .carousel-dot:hover {
+          background: rgba(0, 166, 255, 0.6);
+          transform: scale(1.15);
+        }
+
+        .carousel-dot.active {
+          background: #00a6ff;
+          transform: scale(1.25);
+          box-shadow: 0 0 12px rgba(0, 166, 255, 0.6);
         }
 
         /* ====== NOVA SEÇÃO UNIFICADA COM 3 IMAGENS JUNTAS NO TOPO ====== */
@@ -2704,6 +2797,14 @@ export default function Servicos() {
           .center-line-lateral {
             display: none;
           }
+
+          .carousel-arrow-left {
+            left: 8px;
+          }
+
+          .carousel-arrow-right {
+            right: 8px;
+          }
           
           /* Mobile: browser controla scroll vertical (pan-y); JS controla swipe horizontal */
           .carousel-3d-container-lateral {
@@ -2901,9 +3002,9 @@ export default function Servicos() {
             left: 5px;
           }
 
-          .carousel-controls-lateral {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
+          .carousel-dots {
+            margin-top: 16px !important;
+            margin-bottom: 24px !important;
           }
         }
 
@@ -3078,10 +3179,22 @@ export default function Servicos() {
             margin-top: 6px;
           }
 
-          .control-btn-lateral {
-            width: 45px;
-            height: 45px;
-            font-size: 1.2rem;
+          .carousel-arrow-side {
+            width: 44px;
+            height: 44px;
+          }
+
+          .carousel-arrow-side svg {
+            width: 22px;
+            height: 22px;
+          }
+
+          .carousel-arrow-left {
+            left: 4px;
+          }
+
+          .carousel-arrow-right {
+            right: 4px;
           }
           
           .cta-button-lateral {
@@ -3101,41 +3214,95 @@ export default function Servicos() {
         }
       `}</style>
 
-      {/* Estilos globais do modal (portal em document.body) */}
+      {/* Estilos globais do modal (portal em document.body) - estável em qualquer resolução */}
       <style jsx global>{`
+        .especialidade-modal-portal-root {
+          position: fixed;
+          inset: 0;
+          z-index: 9998;
+          pointer-events: none;
+        }
         .especialidade-modal-portal-root .especialidade-modal-backdrop {
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          width: 100vw;
-          height: 100vh;
+          inset: 0;
           z-index: 9999;
+          pointer-events: auto;
+          width: 100%;
+          height: 100%;
+          min-width: 100%;
+          min-height: 100%;
           background: rgba(0, 0, 0, 0.85);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           animation: especialidade-modalBackdropIn 0.3s ease-out forwards;
-          overflow: hidden;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: min(24px, 3vh) min(20px, 2vw);
+          box-sizing: border-box;
         }
         @keyframes especialidade-modalBackdropIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
         .especialidade-modal-portal-root .modal-center-container {
+          position: relative;
+          margin: auto;
+          width: 100%;
+          max-width: min(720px, 92vw);
+          max-height: 100%;
+          padding: min(20px, 2vh);
+          z-index: 10000;
+          flex-shrink: 0;
+          box-sizing: border-box;
+          overflow: visible;
+        }
+        .especialidade-modal-portal-root .modal-center-container.modal-nav-wrapper {
+          position: relative;
+          overflow: visible;
+        }
+        .especialidade-modal-portal-root .modal-nav-arrow {
           position: absolute;
           top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 100%;
-          max-width: 720px;
-          padding: 20px;
-          z-index: 10000;
+          transform: translateY(-50%);
+          z-index: 10002;
+          width: 52px;
+          height: 52px;
+          border: none;
+          background: transparent;
+          color: #00a6ff;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .especialidade-modal-portal-root .modal-nav-arrow:hover {
+          color: #10dbff;
+          transform: translateY(-50%) scale(1.1);
+        }
+        .especialidade-modal-portal-root .modal-nav-arrow svg {
+          width: 26px;
+          height: 26px;
+        }
+        .especialidade-modal-portal-root .modal-nav-prev {
+          left: -66px;
+        }
+        .especialidade-modal-portal-root .modal-nav-next {
+          right: -66px;
         }
         .especialidade-modal-portal-root .especialidade-modal-box {
           width: 100%;
-          max-height: 85vh;
+          max-width: 100%;
+          min-width: 0;
+          max-height: min(85vh, 90dvh, 920px);
           overflow-y: auto;
+          overflow-x: hidden;
           border-radius: 20px;
           box-shadow: 
             0 25px 80px rgba(0, 0, 0, 0.8),
@@ -3146,6 +3313,9 @@ export default function Servicos() {
           background: rgba(10, 20, 40, 0.95);
           border: 1px solid rgba(255, 255, 255, 0.1);
           position: relative;
+          z-index: 1;
+          box-sizing: border-box;
+          -webkit-overflow-scrolling: touch;
         }
         @keyframes especialidade-modalBoxIn {
           to { 
@@ -3162,6 +3332,32 @@ export default function Servicos() {
           opacity: 0;
           transform: translateX(30px);
           animation: notificationSlideIn 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) 0.3s forwards;
+        }
+        .especialidade-modal-portal-root .notification-fixed-container.whatsapp-only {
+          width: auto;
+        }
+        .especialidade-modal-portal-root .modal-whatsapp-only-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #25D366;
+          color: #fff;
+          border: none;
+          box-shadow: 0 4px 20px rgba(37, 211, 102, 0.5);
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+          text-decoration: none;
+        }
+        .especialidade-modal-portal-root .modal-whatsapp-only-btn:hover {
+          transform: scale(1.08);
+          box-shadow: 0 6px 28px rgba(37, 211, 102, 0.6);
+          color: #fff;
+        }
+        .especialidade-modal-portal-root .modal-whatsapp-only-btn .whatsapp-icon {
+          width: 30px;
+          height: 30px;
         }
         @keyframes notificationSlideIn {
           to { opacity: 1; transform: translateX(0); }
@@ -3408,6 +3604,10 @@ export default function Servicos() {
           position: relative;
           padding: 40px;
           height: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: hidden;
+          box-sizing: border-box;
         }
         .especialidade-modal-portal-root .close-expanded-card {
           position: absolute;
@@ -3437,12 +3637,15 @@ export default function Servicos() {
         .especialidade-modal-portal-root .unified-card-content {
           position: relative;
           z-index: 2;
+          max-width: 100%;
+          min-width: 0;
         }
         .especialidade-modal-portal-root .unified-card-header {
           display: flex;
           align-items: center;
           gap: 20px;
           margin-bottom: 25px;
+          min-width: 0;
         }
         .especialidade-modal-portal-root .unified-icon-wrapper {
           position: relative;
@@ -3478,7 +3681,7 @@ export default function Servicos() {
           border: 2px solid rgba(var(--card-color-rgb, 0, 166, 255), 0.7);
           opacity: 1;
         }
-        .especialidade-modal-portal-root .unified-title-wrapper { flex: 1; }
+        .especialidade-modal-portal-root .unified-title-wrapper { flex: 1; min-width: 0; }
         .especialidade-modal-portal-root .unified-card-title {
           font-family: 'Quicksand', sans-serif;
           font-size: 1.5rem;
@@ -3486,6 +3689,8 @@ export default function Servicos() {
           color: var(--card-color);
           margin: 0 0 8px 0;
           line-height: 1.3;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
         .especialidade-modal-portal-root .unified-title-underline {
           width: 120px;
@@ -3500,6 +3705,8 @@ export default function Servicos() {
           line-height: 1.6;
           margin-bottom: 25px;
           opacity: 0.9;
+          overflow-wrap: break-word;
+          word-break: break-word;
         }
         .especialidade-modal-portal-root .unified-technical-section {
           margin-top: 25px;
@@ -3537,12 +3744,16 @@ export default function Servicos() {
           font-size: 0.95rem;
           line-height: 1.5;
           opacity: 0.85;
+          overflow-wrap: break-word;
+          word-break: break-word;
+          min-width: 0;
         }
-        .especialidade-modal-portal-root .unified-applications { margin-top: 25px; }
+        .especialidade-modal-portal-root .unified-applications { margin-top: 25px; min-width: 0; }
         .especialidade-modal-portal-root .applications-tags {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
+          min-width: 0;
         }
         .especialidade-modal-portal-root .application-tag {
           padding: 6px 14px;
@@ -3550,6 +3761,8 @@ export default function Servicos() {
           font-size: 0.85rem;
           font-weight: 500;
           color: #FFFFFF;
+          max-width: 100%;
+          overflow-wrap: break-word;
           background: rgba(var(--card-color-rgb, 0, 166, 255), 0.3);
           border: 1px solid rgba(var(--card-color-rgb, 0, 166, 255), 0.6);
           transition: all 0.3s ease;
@@ -3568,19 +3781,27 @@ export default function Servicos() {
         }
         @media (max-width: 1200px) {
           .especialidade-modal-portal-root .modal-center-container {
-            max-width: 650px;
+            max-width: min(650px, 92vw);
           }
         }
         @media (max-width: 768px) {
           .especialidade-modal-portal-root .modal-center-container {
-            padding: 16px;
+            padding: min(16px, 2vh);
             max-width: 95%;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            left: 50%;
-            right: auto;
-            transform: translate(-50%, -50%);
+          }
+          .especialidade-modal-portal-root .modal-nav-prev {
+            left: 8px;
+          }
+          .especialidade-modal-portal-root .modal-nav-next {
+            right: 8px;
+          }
+          .especialidade-modal-portal-root .modal-nav-arrow {
+            width: 46px;
+            height: 46px;
+          }
+          .especialidade-modal-portal-root .modal-nav-arrow svg {
+            width: 22px;
+            height: 22px;
           }
           .especialidade-modal-portal-root .especialidade-modal-box {
             margin: 0 auto;
@@ -3589,9 +3810,14 @@ export default function Servicos() {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
           }
-          /* No mobile: esconder a mensagem "Pronto para automatizar com nossas soluções?" */
-          .especialidade-modal-portal-root .notification-fixed-container {
+          /* No mobile: esconder o card completo da notificação; mostrar só o botão WhatsApp quando já visto */
+          .especialidade-modal-portal-root .notification-fixed-container:not(.whatsapp-only) {
             display: none !important;
+          }
+          .especialidade-modal-portal-root .notification-fixed-container.whatsapp-only {
+            display: flex !important;
+            bottom: 20px;
+            right: 20px;
           }
           .especialidade-modal-portal-root .expanded-card-content {
             padding: 15px 20px 30px 20px;
@@ -3664,6 +3890,20 @@ export default function Servicos() {
         @media (max-width: 576px) {
           .especialidade-modal-portal-root .modal-center-container {
             padding: 12px;
+          }
+          .especialidade-modal-portal-root .modal-nav-prev {
+            left: 4px;
+          }
+          .especialidade-modal-portal-root .modal-nav-next {
+            right: 4px;
+          }
+          .especialidade-modal-portal-root .modal-nav-arrow {
+            width: 42px;
+            height: 42px;
+          }
+          .especialidade-modal-portal-root .modal-nav-arrow svg {
+            width: 20px;
+            height: 20px;
           }
           .especialidade-modal-portal-root .notification-fixed-container {
             top: 70px;

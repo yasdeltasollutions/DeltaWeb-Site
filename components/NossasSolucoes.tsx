@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function NossasSolucoes() {
   const particlesContainerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +33,627 @@ export default function NossasSolucoes() {
     { id: 'tecnologia-dados', title: 'Tecnologia e Inteligência de Dados' },
     { id: 'sip-sistema', title: 'SIP - Sistema Industrial de Pesagem' }
   ];
+
+  // Exporta a seção como documento PDF (download direto)
+  const handleShareAsPdf = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const block = (e.currentTarget as HTMLElement).closest('.solucao-block');
+    if (!block || typeof window === 'undefined') return;
+    const origin = window.location.origin;
+
+    const titleEl = block.querySelector('.solucao-block-title');
+    const title = titleEl?.textContent?.trim() || 'Solução';
+    const descriptionEl = block.querySelector('.solucoes-description');
+    const descriptionHtml = descriptionEl?.innerHTML?.trim() || '';
+    const imgEl = block.querySelector('.solucoes-image img');
+    const imgSrc = imgEl?.getAttribute('src');
+    const imgAlt = imgEl?.getAttribute('alt') || title;
+    const fullImgSrc = imgSrc?.startsWith('/') ? origin + imgSrc : imgSrc || '';
+    const featureItems = Array.from(block.querySelectorAll('.features-list .feature-item')).map(
+      (item) => (item.querySelector('span')?.textContent?.trim() || '').replace(/^\s*[\u2022•]\s*/, '')
+    ).filter(Boolean);
+
+    const logoUrl = origin + '/logos/logo-delta2.png';
+
+    // Estilos modernos e atrativos - design contemporâneo
+    const styles = `
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .pdf-export-root {
+      font-family: 'Quicksand', 'Inter', 'Segoe UI', sans-serif;
+      width: 800px;
+      min-height: 1131px;
+      background: #ffffff;
+      color: #1e293b;
+      line-height: 1.5;
+      position: relative;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Background com gradiente sutil */
+    .pdf-export-root::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(16, 219, 255, 0.03) 0%, rgba(16, 219, 255, 0) 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .pdf-export-root::after {
+      content: '';
+      position: absolute;
+      bottom: -50px;
+      left: -50px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(16, 219, 255, 0.02) 0%, rgba(16, 219, 255, 0) 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Header com design moderno - compacto */
+    .pdf-header {
+      padding: 12px 30px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(5px);
+      border-bottom: 1px solid rgba(16, 219, 255, 0.1);
+      position: relative;
+      z-index: 10;
+    }
+
+    .pdf-header img {
+      height: 34px;
+      width: auto;
+    }
+
+    .pdf-header-badge {
+      background: linear-gradient(135deg, #10dbff, #0c4a6e);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Body: flex 1 para empurrar o rodapé para o final da página */
+    .pdf-body {
+      padding: 14px 30px 18px;
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdf-body-inner {
+      flex: 1;
+    }
+
+    /* Wrapper do título com design moderno */
+    .pdf-title-wrapper {
+      margin-bottom: 14px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .pdf-title-main {
+      flex: 1;
+    }
+
+    .pdf-title {
+      font-size: 1.66rem;
+      font-weight: 700;
+      color: #0c1a2b;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .pdf-title-rule {
+      width: 120px;
+      height: 3px;
+      background: linear-gradient(90deg, #10dbff, #0c4a6e);
+      border-radius: 4px;
+    }
+
+    .pdf-title-tag {
+      background: #f1f5f9;
+      padding: 5px 12px;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      color: #475569;
+      font-weight: 500;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Área principal: imagem à esquerda com float, texto Visão geral flui ao lado e abaixo */
+    .pdf-main-flow {
+      margin: 12px 0 10px;
+      overflow: auto;
+    }
+
+    .pdf-image-wrapper {
+      float: left;
+      margin: 0 20px 15px 0;
+    }
+
+    .pdf-image-container {
+      width: 280px;
+      height: 280px;
+      overflow: hidden;
+      background: transparent;
+      border: none;
+    }
+
+    .pdf-image-container img {
+      display: block;
+      width: 280px;
+      height: 280px;
+      object-fit: cover;
+      background: transparent;
+    }
+
+    /* Visão geral: ocupa o espaço ao lado e abaixo da imagem */
+    .pdf-description-col {
+      background: transparent;
+      padding: 0 0 8px 0;
+      border: none;
+      box-shadow: none;
+    }
+
+    .pdf-description-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #10dbff;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .pdf-description {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #334155;
+    }
+
+    .pdf-description p {
+      margin-bottom: 8px;
+    }
+
+    .pdf-description p:last-child {
+      margin-bottom: 0;
+    }
+
+    .pdf-description strong {
+      color: #0c1a2b;
+      font-weight: 700;
+      background: linear-gradient(120deg, rgba(16, 219, 255, 0.1), rgba(16, 219, 255, 0.05));
+      padding: 0 2px;
+    }
+
+    /* Listas na descrição: bullets no fluxo (evitar position absolute sobre a imagem), cor destacada */
+    .pdf-description ul {
+      list-style: disc;
+      padding-left: 1.4em;
+      margin: 10px 0;
+      list-style-position: outside;
+    }
+    .pdf-description li {
+      position: relative;
+      margin-bottom: 10px;
+      padding-left: 0;
+    }
+    .pdf-description li::marker {
+      color: #0c4a6e;
+    }
+    .pdf-description ul,
+    .pdf-description li {
+      color: #334155;
+    }
+    /* Esconder o bullet em span que vinha com position absolute (evita atravessar a imagem) */
+    .pdf-description span[style*="position: absolute"] {
+      display: none !important;
+    }
+
+    /* Seção de recursos com cards modernos - compacta (clear para ficar abaixo do texto) */
+    .pdf-features-section {
+      margin: 14px 0 10px;
+      clear: both;
+    }
+
+    .pdf-features-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .pdf-features-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0c1a2b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pdf-features-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, #e2e8f0, transparent);
+    }
+
+    .pdf-features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .pdf-feature-card-modern {
+      background: white;
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid #eef2f6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pdf-feature-card-modern:hover {
+      transform: translateY(-2px);
+      border-color: rgba(16, 219, 255, 0.3);
+      box-shadow: 0 10px 20px -8px rgba(16, 219, 255, 0.2);
+    }
+
+    .pdf-feature-icon {
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #10dbff;
+      font-weight: 600;
+      font-size: 0.75rem;
+      margin-bottom: 2px;
+    }
+
+    .pdf-feature-text-modern {
+      font-size: 0.8rem;
+      color: #1e293b;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .pdf-feature-desc {
+      font-size: 0.68rem;
+      color: #64748b;
+      line-height: 1.3;
+    }
+
+    /* CTA moderno com gradiente - compacto */
+    .pdf-cta-modern {
+      margin: 12px 0 10px;
+      background: linear-gradient(135deg, #0c1a2b, #132b3f);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid rgba(16, 219, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pdf-cta-modern::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(16, 219, 255, 0.1), transparent);
+      border-radius: 50%;
+    }
+
+    .pdf-cta-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .pdf-cta-title {
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .pdf-cta-subtitle {
+      color: #94a3b8;
+      font-size: 0.72rem;
+    }
+
+    .pdf-cta-contact {
+      display: flex;
+      gap: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .pdf-cta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdf-cta-label {
+      color: #64748b;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .pdf-cta-value {
+      color: #10dbff;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    /* Rodapé moderno - compacto */
+    .pdf-footer-zone {
+      margin-top: auto;
+    }
+
+    .pdf-footer-modern {
+      margin-top: 10px;
+      padding: 10px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px dashed #e2e8f0;
+    }
+
+    .pdf-footer-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pdf-footer-logo-small {
+      height: 20px;
+      opacity: 0.8;
+    }
+
+    .pdf-footer-info {
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+
+    .pdf-footer-right {
+      display: flex;
+      gap: 15px;
+    }
+
+    .pdf-footer-social {
+      width: 28px;
+      height: 28px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: #475569;
+    }
+  `;
+
+    // Processar imagens na descrição
+    const descWithOrigin = descriptionHtml.replace(
+      /(<img[^>]+src=")(\/[^"]+)(")/gi,
+      (match: string, before: string, path: string, after: string) => before + origin + path + after
+    );
+
+    // Limitar features para caber na página (4 = 2x2 no grid de 3 colunas)
+    const maxFeatures = 4;
+    const limitedFeatures = featureItems.slice(0, maxFeatures);
+
+    // Gerar grid de recursos com design moderno
+    const featuresHtml = limitedFeatures.length > 0
+      ? `
+      <div class="pdf-features-section">
+        <div class="pdf-features-header">
+          <span class="pdf-features-title">Recursos exclusivos</span>
+          <span class="pdf-features-line"></span>
+        </div>
+        <div class="pdf-features-grid">
+          ${limitedFeatures.map((f, index) => {
+            const icons = ['▣', '◈', '◉', '◆', '▲', '■'];
+            const descriptions = ['Diferencial competitivo', 'Alta performance', 'Resultados garantidos', 'Tecnologia avançada', 'Suporte especializado', 'Inovação contínua'];
+            return `
+              <div class="pdf-feature-card-modern">
+                <div class="pdf-feature-icon">${icons[index % icons.length]}</div>
+                <div class="pdf-feature-text-modern">${f.replace(/</g, '&lt;')}</div>
+                <div class="pdf-feature-desc">${descriptions[index % descriptions.length]}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    // Container da imagem
+    const imageHtml = fullImgSrc
+      ? `<div class="pdf-image-container"><img src="${fullImgSrc}" alt="${imgAlt.replace(/"/g, '&quot;')}" /></div>`
+      : '<div class="pdf-image-container" style="background: transparent; display: flex; align-items: center; justify-content: center;"><span style="color: #94a3b8; font-size: 0.8rem;">Imagem ilustrativa</span></div>';
+
+    // Data atual
+    const currentDate = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    // Montagem do HTML completo: body-inner empurra o rodapé para o final da página
+    const bodyHtml = `
+    <div class="pdf-body">
+      <div class="pdf-body-inner">
+        <div class="pdf-title-wrapper">
+          <div class="pdf-title-main">
+            <h1 class="pdf-title">${title.replace(/</g, '&lt;')}</h1>
+            <div class="pdf-title-rule"></div>
+          </div>
+        </div>
+
+        <div class="pdf-main-flow">
+          <div class="pdf-image-wrapper">
+            ${imageHtml}
+          </div>
+          <div class="pdf-description-col">
+            <div class="pdf-description-label">Visão geral</div>
+            <div class="pdf-description">${descWithOrigin}</div>
+          </div>
+        </div>
+
+        ${featuresHtml}
+      </div>
+
+      <div class="pdf-footer-zone">
+        <div class="pdf-cta-modern">
+          <div class="pdf-cta-content">
+            <div class="pdf-cta-title">Transforme seu negócio com esta solução</div>
+            <div class="pdf-cta-subtitle">Consultoria especializada e implementação rápida</div>
+          </div>
+          <div class="pdf-cta-contact">
+            <div class="pdf-cta-item">
+              <span class="pdf-cta-label">telefone</span>
+              <span class="pdf-cta-value">(92) 98481-0094</span>
+            </div>
+          </div>
+        </div>
+        <div class="pdf-footer-modern">
+          <div class="pdf-footer-left">
+            <img src="${logoUrl}" alt="Delta" class="pdf-footer-logo-small" />
+            <span class="pdf-footer-info">Delta Sollutions • Inovação digital</span>
+          </div>
+          <div class="pdf-footer-right">
+            <span class="pdf-footer-social">in</span>
+            <span class="pdf-footer-social">@</span>
+            <span class="pdf-footer-social">f</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+    const headerHtml = `
+    <div class="pdf-header">
+      <img src="${logoUrl}" alt="Delta Sollutions" />
+      <span class="pdf-header-badge">Via Delta Web-Site</span>
+    </div>
+  `;
+
+    // Criar elemento wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pdf-export-root';
+    wrapper.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:800px;background:#fff;');
+    wrapper.innerHTML = `<style>${styles}</style>${headerHtml}${bodyHtml}`;
+    document.body.appendChild(wrapper);
+
+    // Carregar imagens
+    const loadImages = (): Promise<void> => {
+      const allImgs = wrapper.querySelectorAll('img');
+      if (allImgs.length === 0) return Promise.resolve();
+      return Promise.all(
+        Array.from(allImgs).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) resolve();
+              else {
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              }
+            })
+        )
+      ).then(() => {});
+    };
+
+    try {
+      await loadImages();
+      await new Promise((r) => setTimeout(r, 300));
+
+      // Gerar canvas com qualidade
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 800,
+      });
+
+      // Criar PDF com múltiplas páginas se necessário (conteúdo ajustado ao tamanho da página)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const imgWidthMm = pageW;
+      const pageHeightPx = (pageH * imgW) / pageW;
+      let drawn = 0;
+
+      while (drawn < imgH) {
+        if (drawn > 0) pdf.addPage();
+        const sliceH = Math.min(pageHeightPx, imgH - drawn);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = imgW;
+        sliceCanvas.height = sliceH;
+        const ctx = sliceCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, imgW, sliceH);
+          ctx.drawImage(canvas, 0, drawn, imgW, sliceH, 0, 0, imgW, sliceH);
+        }
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+        const sliceHeightMm = (sliceH * pageW) / imgW;
+        pdf.addImage(sliceData, 'JPEG', 0, 0, imgWidthMm, sliceHeightMm, undefined, 'FAST');
+        drawn += sliceH;
+      }
+
+      // Nome do arquivo
+      const safeTitle = title
+        .replace(/[^a-z0-9\u00C0-\u024F\s-]/gi, '')
+        .trim()
+        .slice(0, 40)
+        .replace(/\s+/g, '-')
+        .toLowerCase() || 'solucao';
+
+      pdf.save(`delta-${safeTitle}-moderno.pdf`);
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+    } finally {
+      wrapper.remove();
+    }
+  };
 
   // Ao clicar no menu, rola até a seção e fecha o menu flutuante
   const selectSection = (sectionId: string) => {
@@ -119,13 +742,19 @@ export default function NossasSolucoes() {
         id="tech-particles"
       ></div>
 
-      {/* Menu flutuante: só após mount no cliente para evitar hydration mismatch */}
+      {/* Menu flutuante - Modelo Hub Tecnológico */}
       {mounted &&
         isSectionVisible &&
         typeof document !== 'undefined' &&
         document.body &&
         createPortal(
-          <div ref={menuRef} className={`floating-nav-menu ${isFloatingMenuOpen ? 'expanded' : ''}`}>
+          <div
+            ref={menuRef}
+            className={`floating-nav-menu ${isFloatingMenuOpen ? 'expanded' : ''}`}
+            onMouseEnter={() => setIsFloatingMenuOpen(true)}
+            onMouseLeave={() => setIsFloatingMenuOpen(false)}
+          >
+            {/* Botão principal com efeito 3D e brilho rotativo */}
             <button
               type="button"
               className="floating-nav-trigger"
@@ -133,24 +762,46 @@ export default function NossasSolucoes() {
               aria-label={isFloatingMenuOpen ? 'Fechar menu de seções' : 'Abrir menu de seções'}
               aria-expanded={isFloatingMenuOpen}
             >
-              <span className="floating-nav-line" />
-              <span className="floating-nav-line" />
-              <span className="floating-nav-line" />
+              <div className="floating-nav-trigger-glow"></div>
+              <div className="floating-nav-trigger-inner">
+                <span className="floating-nav-icon" aria-hidden="true">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M4 6h16"/>
+                    <path d="M4 12h16"/>
+                    <path d="M4 18h16"/>
+                  </svg>
+                </span>
+                <span className="floating-nav-trigger-text">Soluções</span>
+              </div>
             </button>
+
+            {/* Painel expandido com design de hub tecnológico */}
             <div className="floating-nav-dropdown-wrapper">
-              <p className="floating-nav-panel-title">Painel de Navegação</p>
               <div className="floating-nav-dropdown">
-                <div className="floating-nav-dropdown-inner">
-                {sections.map((section) => (
-                  <button
-                    key={section.id}
-                    type="button"
-                    className={`floating-nav-link ${activeSection === section.id ? 'active' : ''}`}
-                    onClick={() => selectSection(section.id)}
-                  >
-                    {section.title}
-                  </button>
-                ))}
+                {/* Título com efeito de scanline */}
+                <div className="floating-nav-title-section">
+                  <h3 className="floating-nav-title">Painel de Navegação</h3>
+                  <div className="floating-nav-scanline"></div>
+                </div>
+
+                {/* Grid de cards tecnológicos */}
+                <div className="floating-nav-grid">
+                  {sections.map((section, index) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className={`floating-nav-card ${activeSection === section.id ? 'active' : ''}`}
+                      onClick={() => selectSection(section.id)}
+                    >
+                      <div className="floating-nav-card-glow"></div>
+                      <div className="floating-nav-card-number">{(index + 1).toString().padStart(2, '0')}</div>
+                      <div className="floating-nav-card-content">
+                        <span className="floating-nav-card-title">{section.title}</span>
+                        <span className="floating-nav-card-indicator"></span>
+                      </div>
+                      <div className="floating-nav-card-progress"></div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -220,6 +871,21 @@ export default function NossasSolucoes() {
               <span>Confiabilidade operacional em condições severas</span>
             </div>
           </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
+          </div>
             </div>
 
             <div className="solucao-block scroll-reveal scroll-reveal-delay-3">
@@ -269,6 +935,21 @@ export default function NossasSolucoes() {
             <span>Geração automática de relatórios</span>
             </div>
           </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
+          </div>
             </div>
 
             <div className="solucao-block scroll-reveal scroll-reveal-delay-4">
@@ -316,7 +997,22 @@ export default function NossasSolucoes() {
           <div className="feature-item">
             <div className="feature-dot"></div>
             <span>Controle digital e operação segura</span>
-            </div>
+          </div>
+        </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
           </div>
             </div>
 
@@ -399,6 +1095,21 @@ export default function NossasSolucoes() {
             <span>Eficiência, confiabilidade e rastreabilidade</span>
             </div>
           </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
+          </div>
             </div>
 
             <div className="solucao-block scroll-reveal scroll-reveal-delay-6">
@@ -467,6 +1178,21 @@ export default function NossasSolucoes() {
             <span>Integração com equipamentos industriais</span>
             </div>
           </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
+          </div>
             </div>
 
             <div className="solucao-block scroll-reveal scroll-reveal-delay-6">
@@ -532,6 +1258,21 @@ export default function NossasSolucoes() {
             <span>Identificações</span>
           </div>
         </div>
+          <div className="share-solucao-cta">
+            <p className="share-solucao-text">Gostou dessa solução? Compartilhe!</p>
+            <button type="button" className="share-pdf-btn" onClick={handleShareAsPdf}>
+              <span className="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </span>
+              <span className="btn-text">Compartilhe em PDF</span>
+            </button>
+          </div>
             </div>
         </div>
       </div>
@@ -599,156 +1340,420 @@ export default function NossasSolucoes() {
           padding-top: 0;
         }
 
-        /* Menu flutuante: sempre na tela (fixo), abaixo do mega menu do header (mega menu = 1001) */
+        /* ===== MENU FLUTUANTE - HUB TECNOLÓGICO ===== */
         .floating-nav-menu {
           position: fixed;
-          top: 100px;
-          right: 24px;
+          top: 120px;
+          right: 32px;
           z-index: 1000;
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 0;
-          transition: opacity 0.3s ease;
+          filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+          font-family: 'Quicksand', sans-serif;
         }
 
+        /* Botão principal com design 3D */
         .floating-nav-trigger {
-          width: 48px;
-          height: 48px;
-          border-radius: 10px;
-          background: rgba(1, 7, 26, 0.9);
-          border: 1px solid rgba(16, 219, 255, 0.35);
+          width: auto;
+          height: 56px;
+          padding: 0 24px 0 20px;
+          background: linear-gradient(145deg, #0a1428, #01071a);
+          border: 1px solid rgba(16, 219, 255, 0.4);
+          border-radius: 40px;
           cursor: pointer;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          gap: 5px;
-          padding: 12px;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          gap: 12px;
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow:
+            0 10px 20px -8px rgba(0, 0, 0, 0.6),
+            0 0 0 1px rgba(16, 219, 255, 0.2) inset,
+            0 0 20px rgba(16, 219, 255, 0.2);
+          transform-style: preserve-3d;
+          transform: perspective(400px) rotateX(2deg) rotateY(-2deg);
         }
 
         .floating-nav-trigger:hover {
-          border-color: rgba(16, 219, 255, 0.6);
-          box-shadow: 0 0 20px rgba(16, 219, 255, 0.2);
+          transform: perspective(400px) rotateX(0deg) rotateY(0deg) translateY(-2px);
+          border-color: rgba(16, 219, 255, 0.8);
+          box-shadow:
+            0 15px 30px -10px rgba(0, 0, 0, 0.7),
+            0 0 0 1px rgba(16, 219, 255, 0.4) inset,
+            0 0 30px rgba(16, 219, 255, 0.4);
         }
 
-        .floating-nav-line {
-          display: block;
-          width: 20px;
-          height: 2px;
-          background: #b0e0ff;
-          border-radius: 1px;
-          transition: all 0.3s ease;
+        .floating-nav-trigger-glow {
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle at 30% 30%, rgba(16, 219, 255, 0.2), transparent 70%);
+          animation: rotateGlow 8s linear infinite;
+          pointer-events: none;
         }
 
-        .floating-nav-trigger:hover .floating-nav-line,
-        .floating-nav-menu.expanded .floating-nav-line {
-          background: #10dbff;
+        @keyframes rotateGlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
-        .floating-nav-menu.expanded .floating-nav-line:nth-child(1) {
-          transform: translateY(7px) rotate(45deg);
-        }
-
-        .floating-nav-menu.expanded .floating-nav-line:nth-child(2) {
-          opacity: 0;
-          transform: scaleX(0.4);
-        }
-
-        .floating-nav-menu.expanded .floating-nav-line:nth-child(3) {
-          transform: translateY(-7px) rotate(-45deg);
-        }
-
-        .floating-nav-dropdown-wrapper {
+        .floating-nav-trigger-inner {
+          position: relative;
+          z-index: 2;
           display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          max-height: 0;
-          overflow: hidden;
-          opacity: 0;
-          margin-top: -6px;
-          transform: translateY(-10px) scale(0.9) rotateX(-15deg);
-          transform-origin: top right;
-          transition:
-            max-height 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
-            opacity 0.35s ease,
-            transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
         }
 
-        .floating-nav-menu.expanded .floating-nav-dropdown-wrapper {
-          max-height: 80vh;
-          opacity: 1;
-          transform: translateY(0) scale(1) rotateX(0);
-          transition:
-            max-height 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
-            opacity 0.3s ease,
-            transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+        .floating-nav-icon {
+          color: #10dbff;
+          filter: drop-shadow(0 0 8px #10dbff);
+          animation: iconPulse 2s ease-in-out infinite;
         }
 
-        .floating-nav-panel-title {
-          margin: 0 0 6px 0;
-          padding: 0;
+        @keyframes iconPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.1); }
+        }
+
+        .floating-nav-icon svg {
+          display: block;
+        }
+
+        .floating-nav-trigger-text {
+          position: relative;
+          z-index: 2;
+          color: #ffffff;
           font-family: 'Quicksand', sans-serif;
           font-size: 1rem;
           font-weight: 600;
-          color: #ffffff;
-          min-width: 280px;
-          max-width: 360px;
-          text-align: left;
-          align-self: flex-start;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          text-shadow: 0 0 10px #10dbff;
         }
 
+        /* Wrapper do dropdown */
+        .floating-nav-dropdown-wrapper {
+          max-height: 0;
+          opacity: 0;
+          overflow: hidden;
+          margin-top: 16px;
+          transform: translateY(-20px) scale(0.95);
+          transform-origin: top right;
+          transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+          width: 380px;
+        }
+
+        .floating-nav-menu.expanded .floating-nav-dropdown-wrapper {
+          max-height: 700px;
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
+        /* Dropdown principal */
         .floating-nav-dropdown {
+          background: linear-gradient(145deg, rgba(8, 16, 30, 0.95), rgba(1, 7, 26, 0.98));
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(16, 219, 255, 0.25);
+          border-radius: 24px;
+          padding: 20px;
+          box-shadow:
+            0 25px 50px -12px rgba(0, 0, 0, 0.8),
+            0 0 0 1px rgba(16, 219, 255, 0.2) inset,
+            0 0 40px rgba(16, 219, 255, 0.15);
+          position: relative;
           overflow: hidden;
         }
 
-        .floating-nav-dropdown-inner {
-          background: rgba(1, 7, 26, 0.95);
-          border: 1px solid rgba(16, 219, 255, 0.25);
-          border-radius: 12px;
-          padding: 12px 0;
-          min-width: 280px;
-          max-width: 360px;
-          max-height: 80vh;
-          overflow-y: auto;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(16, 219, 255, 0.08);
-          transform-origin: top right;
+        /* Efeito de scanline no fundo */
+        .floating-nav-dropdown::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #10dbff, transparent);
+          animation: scanline 3s linear infinite;
+          opacity: 0.3;
         }
 
-        .floating-nav-link {
-          display: block;
-          width: 100%;
-          text-align: left;
-          padding: 12px 20px;
-          border: none;
-          background: transparent;
+        @keyframes scanline {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        /* Header do dropdown */
+        .floating-nav-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(16, 219, 255, 0.2);
+        }
+
+        .floating-nav-header-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .floating-nav-status-dot {
+          width: 8px;
+          height: 8px;
+          background: #10dbff;
+          border-radius: 50%;
+          box-shadow: 0 0 10px #10dbff;
+          animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+
+        .floating-nav-status-text {
           color: #b0e0ff;
           font-family: 'Quicksand', sans-serif;
-          font-size: 0.95rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+          letter-spacing: 0.5px;
+        }
+
+        .floating-nav-header-right {
+          color: #10dbff;
+          font-family: 'Quicksand', sans-serif;
+          font-size: 0.9rem;
           font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          line-height: 1.35;
-          border-left: 3px solid transparent;
-        }
-
-        .floating-nav-link:hover {
-          color: #10dbff;
-          background: rgba(16, 219, 255, 0.08);
-          border-left-color: rgba(16, 219, 255, 0.5);
-        }
-
-        .floating-nav-link.active {
-          color: #10dbff;
           background: rgba(16, 219, 255, 0.1);
-          border-left-color: #10dbff;
+          padding: 4px 10px;
+          border-radius: 30px;
+          border: 1px solid rgba(16, 219, 255, 0.2);
         }
 
+        /* Título com scanline */
+        .floating-nav-title-section {
+          position: relative;
+          margin-bottom: 20px;
+          overflow: hidden;
+        }
+
+        .floating-nav-title {
+          color: #ffffff;
+          font-family: 'Quicksand', sans-serif;
+          font-size: 1.2rem;
+          font-weight: 700;
+          margin: 0 0 4px 0;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
+        .floating-nav-scanline {
+          width: 100%;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #10dbff, transparent);
+          animation: scanlineMove 2s linear infinite;
+        }
+
+        @keyframes scanlineMove {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        /* Grid de cards */
+        .floating-nav-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 20px;
+          max-height: 400px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        /* Scrollbar personalizada */
+        .floating-nav-grid::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .floating-nav-grid::-webkit-scrollbar-track {
+          background: rgba(16, 219, 255, 0.05);
+          border-radius: 4px;
+        }
+
+        .floating-nav-grid::-webkit-scrollbar-thumb {
+          background: rgba(16, 219, 255, 0.3);
+          border-radius: 4px;
+        }
+
+        .floating-nav-grid::-webkit-scrollbar-thumb:hover {
+          background: #10dbff;
+        }
+
+        /* Card individual */
+        .floating-nav-card {
+          position: relative;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(16, 219, 255, 0.15);
+          border-radius: 14px;
+          padding: 12px 16px;
+          cursor: pointer;
+          width: 100%;
+          text-align: left;
+          transition: all 0.2s ease;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .floating-nav-card-glow {
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(16, 219, 255, 0.1), transparent);
+          transition: left 0.5s ease;
+        }
+
+        .floating-nav-card:hover .floating-nav-card-glow {
+          left: 100%;
+        }
+
+        .floating-nav-card:hover {
+          border-color: rgba(16, 219, 255, 0.4);
+          transform: translateX(4px);
+          background: rgba(16, 219, 255, 0.05);
+        }
+
+        .floating-nav-card.active {
+          border-color: #10dbff;
+          background: rgba(16, 219, 255, 0.1);
+          box-shadow: 0 0 20px rgba(16, 219, 255, 0.2);
+        }
+
+        .floating-nav-card-number {
+          font-family: 'Quicksand', sans-serif;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: rgba(16, 219, 255, 0.6);
+          background: rgba(16, 219, 255, 0.1);
+          padding: 4px 8px;
+          border-radius: 8px;
+          border: 1px solid rgba(16, 219, 255, 0.2);
+          min-width: 42px;
+          text-align: center;
+        }
+
+        .floating-nav-card-content {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .floating-nav-card-title {
+          color: #b0e0ff;
+          font-family: 'Quicksand', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 600;
+          transition: color 0.2s ease;
+          line-height: 1.3;
+        }
+
+        .floating-nav-card:hover .floating-nav-card-title {
+          color: #ffffff;
+        }
+
+        .floating-nav-card.active .floating-nav-card-title {
+          color: #10dbff;
+        }
+
+        .floating-nav-card-indicator {
+          width: 6px;
+          height: 6px;
+          background: #10dbff;
+          border-radius: 50%;
+          opacity: 0;
+          transition: all 0.2s ease;
+          box-shadow: 0 0 10px #10dbff;
+        }
+
+        .floating-nav-card:hover .floating-nav-card-indicator {
+          opacity: 0.5;
+        }
+
+        .floating-nav-card.active .floating-nav-card-indicator {
+          opacity: 1;
+          animation: indicatorPulse 1.5s infinite;
+        }
+
+        @keyframes indicatorPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.7; }
+        }
+
+        .floating-nav-card-progress {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 0%;
+          height: 2px;
+          background: linear-gradient(90deg, #10dbff, #0c4a6e);
+          transition: width 0.3s ease;
+        }
+
+        .floating-nav-card:hover .floating-nav-card-progress {
+          width: 100%;
+        }
+
+        /* Footer com métricas */
+        .floating-nav-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-top: 16px;
+          margin-top: 8px;
+          border-top: 1px solid rgba(16, 219, 255, 0.15);
+        }
+
+        .floating-nav-metric {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .floating-nav-metric-label {
+          color: rgba(176, 224, 255, 0.6);
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .floating-nav-metric-value {
+          color: #ffffff;
+          font-size: 0.9rem;
+          font-weight: 700;
+          font-family: 'Quicksand', sans-serif;
+        }
+
+        .floating-nav-metric-value.online {
+          color: #10dbff;
+          text-shadow: 0 0 8px #10dbff;
+        }
+
+        /* Responsividade */
         @media (max-width: 1024px) {
           .floating-nav-menu {
-            display: none;
+            right: 24px;
+            top: 100px;
           }
         }
 
@@ -757,13 +1762,29 @@ export default function NossasSolucoes() {
             top: 80px;
             right: 16px;
           }
-          .floating-nav-trigger {
-            width: 44px;
-            height: 44px;
+
+          .floating-nav-dropdown-wrapper {
+            width: 320px;
           }
-          .floating-nav-dropdown-inner {
-            min-width: 260px;
-            max-width: calc(100vw - 80px);
+
+          .floating-nav-trigger {
+            height: 48px;
+            padding: 0 20px 0 16px;
+          }
+
+          .floating-nav-icon svg {
+            width: 20px;
+            height: 20px;
+          }
+
+          .floating-nav-trigger-text {
+            font-size: 0.9rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .floating-nav-dropdown-wrapper {
+            width: 300px;
           }
         }
 
@@ -842,6 +1863,256 @@ export default function NossasSolucoes() {
 
         .solucao-block:last-of-type {
           margin-bottom: 40px;
+        }
+
+        .share-solucao-cta {
+          border-top: 1px solid rgba(16, 219, 255, 0.2);
+          padding-top: 28px;
+          margin-top: 48px;
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          transition: all 0.3s ease;
+        }
+
+        .share-solucao-cta:hover {
+          transform: translateY(-1px);
+        }
+
+        .share-solucao-text {
+          font-size: 1.1rem;
+          color: #b0e0ff;
+          margin: 0;
+          font-weight: 500;
+          transition: color 0.3s ease;
+        }
+
+        .share-solucao-cta:hover .share-solucao-text {
+          color: #10dbff;
+        }
+
+        @keyframes btn-hover-pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.02);
+          }
+        }
+
+        @keyframes icon-draw {
+          0% {
+            stroke-dashoffset: 100;
+          }
+          100% {
+            stroke-dashoffset: 0;
+          }
+        }
+
+        @keyframes btn-glow-soft {
+          0%, 100% {
+            box-shadow: 0 4px 12px rgba(16, 219, 255, 0.2);
+          }
+          50% {
+            box-shadow: 0 6px 18px rgba(16, 219, 255, 0.35);
+          }
+        }
+
+        @keyframes border-glow {
+          0%, 100% {
+            border-color: rgba(16, 219, 255, 0.5);
+          }
+          50% {
+            border-color: rgba(16, 219, 255, 0.8);
+          }
+        }
+
+        @keyframes icon-pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(0.9);
+          }
+        }
+
+        .share-pdf-btn {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 28px;
+          background: transparent;
+          border: 1.5px solid rgba(16, 219, 255, 0.5);
+          border-radius: 40px;
+          color: #10dbff;
+          font-size: 1rem;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          animation: btn-glow-soft 3s ease-in-out infinite, border-glow 3s ease-in-out infinite;
+          backdrop-filter: blur(4px);
+          overflow: hidden;
+        }
+
+        .share-pdf-btn::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          background: rgba(16, 219, 255, 0.1);
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          transition: width 0.4s ease, height 0.4s ease;
+          z-index: -1;
+        }
+
+        .share-pdf-btn:hover::before {
+          width: 150%;
+          height: 150%;
+        }
+
+        .share-pdf-btn:hover {
+          border-color: #10dbff;
+          color: #ffffff;
+          transform: translateY(-2px);
+          animation: btn-hover-pulse 1.5s ease-in-out infinite;
+        }
+
+        .share-pdf-btn:active {
+          transform: translateY(1px);
+          box-shadow: 0 2px 8px rgba(16, 219, 255, 0.2);
+        }
+
+        .btn-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.3s ease;
+        }
+
+        .share-pdf-btn:hover .btn-icon {
+          transform: rotate(-5deg) scale(1.1);
+        }
+
+        .btn-text {
+          position: relative;
+          transition: all 0.3s ease;
+        }
+
+        .btn-text::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 0;
+          width: 0;
+          height: 2px;
+          background: #10dbff;
+          border-radius: 2px;
+          transition: width 0.3s ease;
+        }
+
+        .share-pdf-btn:hover .btn-text::after {
+          width: 100%;
+        }
+
+        .share-pdf-btn:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(16, 219, 255, 0.3);
+        }
+
+        .share-pdf-btn::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          background: rgba(16, 219, 255, 0.2);
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          transition: width 0.3s ease, height 0.3s ease;
+          z-index: -1;
+          pointer-events: none;
+        }
+
+        .share-pdf-btn:active::after {
+          width: 100%;
+          height: 100%;
+          transition: width 0.2s ease, height 0.2s ease;
+        }
+
+        .share-pdf-btn:active .btn-icon {
+          animation: icon-pulse 0.2s ease;
+        }
+
+        @media (max-width: 768px) {
+          .share-pdf-btn {
+            padding: 10px 24px;
+            gap: 6px;
+          }
+
+          .btn-icon svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .btn-text {
+            font-size: 0.95rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .share-pdf-btn {
+            padding: 8px 20px;
+          }
+
+          .btn-icon svg {
+            width: 16px;
+            height: 16px;
+          }
+
+          .btn-text {
+            font-size: 0.9rem;
+          }
+
+          .share-solucao-text {
+            font-size: 1rem;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .share-pdf-btn {
+            padding: 8px 18px;
+          }
+
+          .btn-text {
+            font-size: 0.85rem;
+          }
+        }
+
+        @media (max-width: 320px) {
+          .btn-text {
+            display: none;
+          }
+
+          .share-pdf-btn {
+            padding: 10px;
+            border-radius: 50%;
+            aspect-ratio: 1;
+          }
+
+          .btn-icon svg {
+            width: 20px;
+            height: 20px;
+          }
         }
 
         .solucao-block-title {

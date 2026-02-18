@@ -310,7 +310,7 @@ export default function Inicio() {
                   ref={ctaRef}
                 >
                   <span className="button-content">
-                    <span className="button-icon"><i className="fas fa-bolt"></i></span>
+                    <span className="button-icon"><i className="fab fa-whatsapp"></i></span>
                     <span className="button-text">
                       <span className="button-main">Consultoria Gratuita</span>
                       <span className="button-sub">Inicie sua transformação</span>
@@ -630,7 +630,7 @@ export default function Inicio() {
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="btn-action">
-                  <i className="fas fa-bolt"></i>
+                  <i className="fab fa-whatsapp"></i>
                   <span>Consultoria Gratuita</span>
                 </a>
               </div>
